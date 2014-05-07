@@ -47,7 +47,7 @@ while (!is.null(x = next_link)) {
 # the major difference should be the information to extract
 
 # select a petition to investigate further
-petition <- petitions[2,]
+petition <- petitions[60,]
 
 # the petition link should have https://petitions.whitehouse.gov prepended
 petition_link <- paste0("https://petitions.whitehouse.gov", petition[,"link"])
@@ -58,6 +58,7 @@ signatures <- data.frame(initials = character(length = 0), city = character(leng
                          signature_position = integer(length = 0), sign_date = character(length = 0),
                          stringsAsFactors = FALSE)
 first_page <- TRUE
+pages <- 1
 while (!is.null(x = petition_link)) {
   # get/parse html
   tree <- htmlParse(file = getURL(url = petition_link), asText = TRUE)
@@ -112,4 +113,7 @@ while (!is.null(x = petition_link)) {
                           fun = function(href) {
                             href <- paste0("https://petitions.whitehouse.gov", href)
                             return(href)})[[1]]
+  
+  # progress bar
+  cat("\r", sprintf(fmt = "pages processed: %6d | signatures processed: %6d", pages <- pages + 1, nrow(x = signatures)))
 }
