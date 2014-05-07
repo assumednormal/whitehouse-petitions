@@ -12,6 +12,7 @@ next_link <- "https://petitions.whitehouse.gov/petitions"
 
 # if the link is non-null, follow it and grab petitions
 petitions <- data.frame(title = character(length = 0), link = character(length = 0), stringsAsFactors = FALSE)
+pages <- 0
 while (!is.null(x = next_link)) {
   # get/parse html
   tree <- htmlParse(file = getURL(url = next_link), asText = TRUE)
@@ -35,6 +36,9 @@ while (!is.null(x = next_link)) {
                             href <- paste0("https://petitions.whitehouse.gov", href)
                             href <- substr(x = href, start = 1, stop = nchar(x = href) - 1)
                             return(href)})
+  
+  # progress bar
+  cat("\r", sprintf(fmt = "pages processed: %3d | petitions processed: %3d", pages <- pages + 1, nrow(x = petitions)))
 }
 
 # get petition information ----------------------------------------------------------------------------------------
@@ -43,7 +47,7 @@ while (!is.null(x = next_link)) {
 # the major difference should be the information to extract
 
 # select a petition to investigate further
-petition <- petitions[1,]
+petition <- petitions[2,]
 
 # the petition link should have https://petitions.whitehouse.gov prepended
 petition_link <- paste0("https://petitions.whitehouse.gov", petition[,"link"])
@@ -66,8 +70,10 @@ while (!is.null(x = petition_link)) {
     petition_info["end_date"] <- gsub(pattern = "Signatures needed by | to reach goal of 100,000", replacement = "",
                                       x = xpathApply(doc = tree, path = "//div[contains(@id,'sig-needed')]/h4",
                                                      fun = xmlValue)[[1]])
-    petition_info["n_signatures"] <- as.integer(x = xpathApply(doc = tree, path = "//div[contains(@id,'total-on')]/div",
-                                                               fun = xmlValue)[[1]])
+    petition_info["n_signatures"] <- as.integer(x = gsub(pattern = ",", replacement = "",
+                                                         x = xpathApply(doc = tree,
+                                                                        path = "//div[contains(@id,'total-on')]/div",
+                                                                        fun = xmlValue)[[1]]))
     first_page <- FALSE
   }
   
@@ -88,12 +94,14 @@ while (!is.null(x = petition_link)) {
                                    city <- state <- NA
                                  }
                                  signature_position <- ifelse(test = value[9] == "", yes = as.integer(x = NA),
-                                                              no = gsub(pattern = "Signature # ", replacement = "",
-                                                                        x = value[9]))
+                                                              no = as.integer(x = gsub(pattern = ",", replacement = "",
+                                                                                       x = gsub(pattern = "Signature # ",
+                                                                                                replacement = "",
+                                                                                                x = value[9]))))
                                  sign_date <- ifelse(test = value[8] == "", yes = NA, no = value[8])
                                  return(data.frame(initials = initials, city = city, state = state,
                                                    signature_position = signature_position, sign_date = sign_date,
-                                                   stringsAsFators = FALSE))
+                                                   stringsAsFactors = FALSE))
                                })
   
   # append petitions to data set
@@ -103,6 +111,5 @@ while (!is.null(x = petition_link)) {
   petition_link <- xpathApply(doc = tree, path = "//a[contains(@class,'load-next')]/@href",
                           fun = function(href) {
                             href <- paste0("https://petitions.whitehouse.gov", href)
-#                             href <- substr(x = href, start = 1, stop = nchar(x = href) - 1)
                             return(href)})[[1]]
 }
